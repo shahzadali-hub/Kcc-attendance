@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>KCC Staff Attendance</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      text-align: center;
+      margin-top: 50px;
+    }
+    h1 {
+      color: #333;
+    }
+    .container {
+      width: 90%;
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      box-shadow: 0 0 10px #aaa;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    input, button, select {
+      width: 90%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    #thankYouMsg {
+      font-size: 18px;
+      color: green;
+      margin-top: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    ul {
+      text-align: left;
+    }
+    .attendance-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .attendance-item button {
+      background: red;
+      color: white;
+      width: auto;
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>KCC Staff</h1>
+
+  <div class="container" id="authSection">
+    <h3>Sign Up</h3>
+    <input type="text" id="signupName" placeholder="Your Name">
+    <input type="password" id="signupPassword" placeholder="Create Password">
+    <button onclick="signUp()">Sign Up</button>
+
+    <hr>
+
+    <h3>Login</h3>
+    <input type="text" id="loginName" placeholder="Your Name">
+    <input type="password" id="loginPassword" placeholder="Password">
+    <button onclick="login()">Login</button>
+
+    <hr>
+
+    <h3>Admin Panel</h3>
+    <input type="password" id="adminPassword" placeholder="Admin Password">
+    <button onclick="adminLogin()">Enter Admin Panel</button>
+  </div>
+
+  <div class="container hidden" id="attendanceSection">
+    <h2>Welcome, <span id="userName"></span>!</h2>
+    <p>Month: <span id="currentMonth"></span></p>
+    <p>Date & Time: <span id="currentTime"></span></p>
+    <button onclick="markAttendance()">Mark Your Attendance</button>
+    <p id="thankYouMsg" class="hidden">? Thank You! Attendance Marked.</p>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <div class="container hidden" id="adminSection">
+    <h2>Admin Panel</h2>
+    <p><strong>Signed Up Users & Attendance:</strong></p>
+    <label>Select Month:</label>
+    <select id="monthFilter" onchange="showAdminPanel()">
+      <option value="All">All Months</option>
+      <option value="January">January</option>
+      <option value="February">February</option>
+      <option value="March">March</option>
+      <option value="April">April</option>
+      <option value="May">May</option>
+      <option value="June">June</option>
+      <option value="July">July</option>
+      <option value="August">August</option>
+      <option value="September">September</option>
+      <option value="October">October</option>
+      <option value="November">November</option>
+      <option value="December">December</option>
+    </select>
+
+    <ul id="userList"></ul>
+
+    <h3>Change Admin Password</h3>
+    <input type="password" id="newAdminPassword" placeholder="New Admin Password">
+    <button onclick="changeAdminPassword()">Change Password</button>
+
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <script>
+    let users = JSON.parse(localStorage.getItem("users")) || {};
+    let currentUser = null;
+    let adminPassword = localStorage.getItem("adminPassword") || "kCC2606";
+    let clockInterval = null;
+
+    function signUp() {
+      const name = document.getElementById("signupName").value.trim();
+      const pass = document.getElementById("signupPassword").value;
+      if (name === "" || pass === "") return alert("Fill all fields");
+      if (users[name]) return alert("User already exists!");
+      users[name] = { password: pass, attendance: [] };
+      localStorage.setItem("users", JSON.stringify(users));
+      alert("Signed up! Now login.");
+    }
+
+    function login() {
+      const name = document.getElementById("loginName").value.trim();
+      const pass = document.getElementById("loginPassword").value;
+      if (!users[name]) return alert("User not found.");
+      if (users[name].password !== pass) return alert("Wrong password.");
+      currentUser = name;
+      showAttendanceSection();
+    }
+
+    function adminLogin() {
+      const pass = document.getElementById("adminPassword").value;
+      if (pass !== adminPassword) return alert("Wrong admin password!");
+      showAdminPanel();
+    }
+
+    function changeAdminPassword() {
+      const newPass = document.getElementById("newAdminPassword").value;
+      if (newPass.trim() === "") return alert("Enter new password");
+      adminPassword = newPass;
+      localStorage.setItem("adminPassword", newPass);
+      alert("Admin password updated!");
+    }
+
+    function showAttendanceSection() {
+      document.getElementById("authSection").classList.add("hidden");
+      document.getElementById("attendanceSection").classList.remove("hidden");
+      document.getElementById("userName").innerText = currentUser;
+      document.getElementById("thankYouMsg").classList.add("hidden");
+      updateClock();
+      clockInterval = setInterval(updateClock, 1000);
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const dayName = days[now.getDay()];
+      const month = now.toLocaleString('en-US', { month: 'long' });
+      const time = now.toLocaleTimeString('en-US', { hour12: true });
+      const fullTime = `${dayName}, ${now.getDate()} ${month} ${now.getFullYear()} — ${time}`;
+      document.getElementById("currentMonth").innerText = month;
+      document.getElementById("currentTime").innerText = fullTime;
+    }
+
+    function markAttendance() {
+      const now = new Date();
+      const details = {
+        date: now.toLocaleDateString(),
+        time: now.toLocaleTimeString('en-US', { hour12: true }),
+        day: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()],
+        month: now.toLocaleString('en-US', { month: 'long' })
+      };
+      users[currentUser].attendance.push(details);
+      localStorage.setItem("users", JSON.stringify(users));
+      document.getElementById("thankYouMsg").classList.remove("hidden");
+    }
+
+    function deleteAttendance(userName, index) {
+      const userAtt = users[userName].attendance;
+      if (!userAtt || index < 0 || index >= userAtt.length) return alert("Invalid record");
+      if (confirm("Are you sure you want to delete this attendance record?")) {
+        userAtt.splice(index, 1);
+        localStorage.setItem("users", JSON.stringify(users));
+        showAdminPanel();
+      }
+    }
+
+    function showAdminPanel() {
+      document.getElementById("authSection").classList.add("hidden");
+      document.getElementById("adminSection").classList.remove("hidden");
+
+      const filter = document.getElementById("monthFilter").value;
+      const list = document.getElementById("userList");
+      list.innerHTML = "";
+
+      for (let name in users) {
+        const user = users[name];
+        const atts = user.attendance || [];
+        const matches = atts.map((a, index) => ({ ...a, index })).filter(a => filter === "All" || a.month === filter);
+
+        if (matches.length > 0) {
+          matches.forEach(a => {
+            const li = document.createElement("li");
+            li.className = "attendance-item";
+            li.innerHTML = `${name} ? — ${a.day}, ${a.date} at ${a.time} <button onclick="deleteAttendance('${name}', ${a.index})">Delete</button>`;
+            list.appendChild(li);
+          });
+        } else if (filter !== "All") {
+          const li = document.createElement("li");
+          li.innerText = `${name} ? — No attendance in ${filter}`;
+          list.appendChild(li);
+        }
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      clearInterval(clockInterval);
+      document.getElementById("attendanceSection").classList.add("hidden");
+      document.getElementById("adminSection").classList.add("hidden");
+      document.getElementById("authSection").classList.remove("hidden");
+    }
+  </script>
+</body>
+</html>
